@@ -1,7 +1,6 @@
 <domain type='{{ libvirt_domain_type }}'>
   <name>{{ item.name }}</name>
   <memory unit='MiB'>{{ flavors[item.flavor].memory }}</memory>
-  <vcpu>{{ flavors[item.flavor].vcpu }}</vcpu>
 
   {{baremetal_vm_xml|default('')}}
 
@@ -19,7 +18,36 @@
     <apic/>
     <pae/>
   </features>
+{% if item.flavor == 'worker' %}
+  <numatune>
+    <memory mode='preferred' nodeset='0'/>
+    <memnode cellid='0' mode='strict' nodeset='0'/>
+    <memnode cellid='1' mode='strict' nodeset='1'/>
+  </numatune>
+  <vcpu>8</vcpu>
+  <cpu mode='host-passthrough' check='none'>
+    <topology sockets='2' cores='4' threads='1'/>
+    <cache mode='passthrough'/>
+    <numa>
+      <cell id='0' cpus='0-3' memory='{{ (flavors[item.flavor].memory / 2) |int }}' unit='MiB'>
+        <distances>
+          <sibling id='0' value='10'/>
+          <sibling id='1' value='21'/>
+        </distances>
+      </cell>
+      <cell id='1' cpus='4-7' memory='{{ (flavors[item.flavor].memory / 2) |int }}' unit='MiB'>
+        <distances>
+          <sibling id='0' value='21'/>
+          <sibling id='1' value='10'/>
+        </distances>
+      </cell>
+    </numa>
+  </cpu>
+
+{% else %}
+  <vcpu>{{ flavors[item.flavor].vcpu }}</vcpu>
   <cpu mode='host-passthrough'/>
+{% endif %}
   <clock offset='utc'/>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
